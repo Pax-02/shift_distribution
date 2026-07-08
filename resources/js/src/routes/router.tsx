@@ -6,6 +6,8 @@ import { ClientFormPage } from '../pages/clients/ClientFormPage';
 import { ClientsListPage } from '../pages/clients/ClientsListPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { LoginPage } from '../pages/LoginPage';
+import { ShiftFormPage } from '../pages/shifts/ShiftFormPage';
+import { ShiftsListPage } from '../pages/shifts/ShiftsListPage';
 import { WorkerFormPage } from '../pages/workers/WorkerFormPage';
 import { WorkersListPage } from '../pages/workers/WorkersListPage';
 
@@ -43,6 +45,20 @@ export const router = createBrowserRouter([
                                 children: [
                                     { path: 'new', element: <ClientFormPage /> },
                                     { path: ':id/edit', element: <ClientFormPage /> },
+                                ],
+                            },
+                        ],
+                    },
+                    {
+                        path: 'shifts',
+                        element: <RequirePermission permission="shifts.view" />,
+                        children: [
+                            { index: true, element: <ShiftsListPage /> },
+                            {
+                                element: <RequirePermission permission="shifts.manage" />,
+                                children: [
+                                    { path: 'new', element: <ShiftFormPage /> },
+                                    { path: ':id/edit', element: <ShiftFormPage /> },
                                 ],
                             },
                         ],

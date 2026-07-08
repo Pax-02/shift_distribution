@@ -10,6 +10,8 @@ export interface Shift {
     destination_address_id: string | null;
     destination_address_text: string | null;
     shift_date: string;
+    // Serialized as "HH:MM:SS" on read, but the H:i validation rule on
+    // write (CreateShiftPayload/UpdateShiftPayload below) expects "HH:MM".
     start_time: string;
     end_time: string;
     gender_requirement: GenderRequirement | null;
