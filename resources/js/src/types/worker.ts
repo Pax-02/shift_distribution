@@ -15,8 +15,10 @@ export interface Worker {
         city: string | null;
         postcode: string | null;
         country: string | null;
-        latitude: number | null;
-        longitude: number | null;
+        // Decimal columns are serialized as strings by Laravel, same as
+        // contracted_weekly_hours (e.g. "51.4189520").
+        latitude: string | null;
+        longitude: string | null;
     };
     // Decimal columns are serialized as strings by Laravel (e.g. "37.50").
     contracted_weekly_hours: string;

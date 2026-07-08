@@ -7,8 +7,10 @@ export interface ClientAddress {
     city: string | null;
     postcode: string | null;
     country: string | null;
-    latitude: number | null;
-    longitude: number | null;
+    // Decimal columns are serialized as strings by Laravel, same as
+    // contracted_weekly_hours (e.g. "51.5810230").
+    latitude: string | null;
+    longitude: string | null;
     is_primary: boolean;
 }
 
