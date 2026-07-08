@@ -21,11 +21,13 @@ export interface Worker {
     // Decimal columns are serialized as strings by Laravel (e.g. "37.50").
     contracted_weekly_hours: string;
     max_weekly_hours: string | null;
-    standby: boolean;
+    // Nullable in practice, not just boolean: the DB column allows NULL and
+    // Laravel doesn't coerce an omitted create payload to false.
+    standby: boolean | null;
     journey_preference: JourneyPreference | null;
     preferred_client_ids: string[] | null;
     avoided_client_ids: string[] | null;
-    is_active: boolean;
+    is_active: boolean | null;
     notes: string | null;
     created_at: string;
     updated_at: string;
