@@ -9,17 +9,25 @@ use App\Http\Requests\Shift\UpdateShiftRequest;
 use App\Http\Resources\ShiftResource;
 use App\Models\Shift;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ShiftController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Shift::class);
 
-        return ShiftResource::collection(
-            Shift::query()->orderBy('shift_date')->orderBy('start_time')->paginate()
-        );
+        // Same when()-filter pattern as AllocationController::history.
+        $shifts = Shift::query()
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->when($request->filled('from'), fn ($q) => $q->where('shift_date', '>=', $request->date('from')))
+            ->when($request->filled('to'), fn ($q) => $q->where('shift_date', '<=', $request->date('to')))
+            ->orderBy('shift_date')
+            ->orderBy('start_time')
+            ->paginate();
+
+        return ShiftResource::collection($shifts);
     }
 
     public function store(StoreShiftRequest $request): ShiftResource
