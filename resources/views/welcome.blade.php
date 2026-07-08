@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ config('app.name', 'Laravel') }}</title>
         @fonts
+        @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/src/main.tsx'])
     </head>
     <body class="font-sans antialiased">
