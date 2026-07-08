@@ -1,28 +1,20 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AuthProvider, useAuth } from './auth/AuthContext';
-import { LoginPage } from './pages/LoginPage';
+import { RouterProvider } from 'react-router-dom';
+import { AuthProvider } from './auth/AuthContext';
+import { router } from './routes/router';
 
-// Temporary harness to manually verify auth end-to-end before real routing
-// (react-router-dom) is wired up in the next step — replaced by a
-// RouterProvider tree with a protected dashboard route then.
-function AuthGate() {
-    const { user, logout } = useAuth();
-    if (!user) {
-        return <LoginPage />;
-    }
-    return (
-        <div>
-            <p>Logged in as {user.name}</p>
-            <button onClick={() => void logout()}>Log out</button>
-        </div>
-    );
-}
+// No custom defaultOptions yet — no real queries exist until the first
+// data-fetching feature page lands; staleTime/retry tuning goes here then.
+const queryClient = new QueryClient();
 
 createRoot(document.getElementById('app')!).render(
     <StrictMode>
-        <AuthProvider>
-            <AuthGate />
-        </AuthProvider>
+        <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+                <RouterProvider router={router} />
+            </AuthProvider>
+        </QueryClientProvider>
     </StrictMode>,
 );

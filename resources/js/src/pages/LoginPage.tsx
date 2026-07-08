@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 
 export function LoginPage() {
     const { login } = useAuth();
+    const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -15,6 +17,7 @@ export function LoginPage() {
         setIsSubmitting(true);
         try {
             await login(email, password);
+            navigate('/', { replace: true });
         } catch (error) {
             setErrors(error instanceof ApiError && error.errors ? error.errors : { email: ['Login failed. Please try again.'] });
         } finally {
