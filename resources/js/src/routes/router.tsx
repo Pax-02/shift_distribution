@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { RequireAuth } from '../auth/RequireAuth';
 import { RequirePermission } from '../auth/RequirePermission';
 import { AppShell } from '../components/layout/AppShell';
+import { AllocationPage } from '../pages/allocation/AllocationPage';
 import { ClientFormPage } from '../pages/clients/ClientFormPage';
 import { ClientsListPage } from '../pages/clients/ClientsListPage';
 import { DashboardPage } from '../pages/DashboardPage';
@@ -62,6 +63,11 @@ export const router = createBrowserRouter([
                                 ],
                             },
                         ],
+                    },
+                    {
+                        path: 'allocation',
+                        element: <RequirePermission permission="allocation.run" />,
+                        children: [{ index: true, element: <AllocationPage /> }],
                     },
                 ],
             },
