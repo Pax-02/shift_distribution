@@ -14,10 +14,20 @@ import {
     useConfirmAssignmentMutation,
     useRunAllocationMutation,
 } from '../../hooks/useAllocation';
+import { useClientsQuery } from '../../hooks/useClients';
+import { useCreateShiftMessageMutation } from '../../hooks/useShiftMessages';
 import { useShiftsQuery } from '../../hooks/useShifts';
 import { useWorkersQuery } from '../../hooks/useWorkers';
 import type { AllocationResult, RunAllocationResponse } from '../../types/allocation';
 import type { Assignment, RuleBreakdownEntry } from '../../types/assignment';
+import type { ShiftMessage } from '../../types/shiftMessage';
+
+// MockAIParser's client extraction only matches consecutive capitalized
+// words with no punctuation ("for Volkman Ltd"), so a Faker-generated name
+// with a comma ("Wilderman, Weimann and Kohler") won't round-trip — pick a
+// real client name that actually looks parseable for the example text,
+// falling back to the first client rather than guaranteeing a match.
+const PARSEABLE_NAME = /^[A-Z][a-zA-Z'-]+(\s+[A-Z][a-zA-Z'-]+){0,2}$/;
 
 // Rule FQCNs (e.g. "App\Rules\Allocation\AvailabilityRule") are more
 // readable trimmed to just the class name.
@@ -66,12 +76,19 @@ function RankedWorkerRow({ result, name }: { result: AllocationResult; name: str
 
 export function AllocationPage() {
     const { hasPermission } = useAuth();
+    // Same permission as creating a shift directly (StoreShiftMessageRequest
+    // authorizes off `create Shift`, since ingesting a message is just
+    // another entry point that can end in one) — reused for both the
+    // message-transform card and the confirm/cancel actions below.
     const canManageAssignments = hasPermission('shifts.manage');
 
     const [shiftId, setShiftId] = useState('');
     const [result, setResult] = useState<RunAllocationResponse | null>(null);
     const [runError, setRunError] = useState<string | null>(null);
     const [historyPage, setHistoryPage] = useState(1);
+    const [messageText, setMessageText] = useState('');
+    const [messageResult, setMessageResult] = useState<ShiftMessage | null>(null);
+    const [messageError, setMessageError] = useState<string | null>(null);
 
     const { data: pendingShiftsData } = useShiftsQuery({ status: 'pending' });
     const pendingShifts = pendingShiftsData?.data ?? [];
@@ -79,11 +96,29 @@ export function AllocationPage() {
     const workerNameById = new Map(
         (workersData?.data ?? []).map((worker) => [worker.id, `${worker.first_name} ${worker.last_name}`]),
     );
+    const { data: clientsData } = useClientsQuery({});
+    const exampleClientName =
+        clientsData?.data.find((client) => PARSEABLE_NAME.test(client.name))?.name ?? clientsData?.data[0]?.name ?? 'Acme Care';
     const { data: historyData, isLoading: historyLoading } = useAllocationHistoryQuery({ page: historyPage });
 
     const runMutation = useRunAllocationMutation();
     const confirmMutation = useConfirmAssignmentMutation();
     const cancelMutation = useCancelAssignmentMutation();
+    const messageMutation = useCreateShiftMessageMutation();
+
+    async function handleTransform() {
+        setMessageError(null);
+        setMessageResult(null);
+        try {
+            const response = await messageMutation.mutateAsync({ raw_message: messageText, channel: 'manual' });
+            setMessageResult(response.data);
+            if (response.data.shift_id) {
+                setShiftId(response.data.shift_id);
+            }
+        } catch (error) {
+            setMessageError(error instanceof ApiError ? error.message : 'Could not process this message. Please try again.');
+        }
+    }
 
     async function handleRun() {
         setRunError(null);
@@ -163,6 +198,62 @@ export function AllocationPage() {
                     Score eligible workers against a pending shift and propose the best fit.
                 </p>
             </div>
+
+            {canManageAssignments && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">New shift request</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        Paste an inbound message and the parser will turn it into a shift.
+                    </p>
+                    <textarea
+                        rows={3}
+                        className={`${fieldInputClasses} mt-4`}
+                        placeholder={`Transport needed for ${exampleClientName} on 20/08/2026, pickup: 12 Main Street, dropoff: City Hospital, 09:00 to 11:00`}
+                        value={messageText}
+                        onChange={(event) => setMessageText(event.target.value)}
+                    />
+                    <div className="mt-3 flex justify-end">
+                        <Button onClick={() => void handleTransform()} disabled={!messageText.trim() || messageMutation.isPending}>
+                            {messageMutation.isPending ? 'Transforming…' : 'Transform message'}
+                        </Button>
+                    </div>
+
+                    {messageError && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{messageError}</p>}
+
+                    {messageResult?.parse_status === 'failed' && (
+                        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/5 dark:text-red-400">
+                            Couldn't parse this message: {messageResult.parse_error}
+                        </p>
+                    )}
+
+                    {messageResult?.parse_status === 'validated' && messageResult.parsed_payload && (
+                        <div
+                            className={clsx(
+                                'mt-4 rounded-xl border p-4 text-sm',
+                                messageResult.shift_id
+                                    ? 'border-green-200 bg-green-50 dark:border-green-500/20 dark:bg-green-500/5'
+                                    : 'border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/5',
+                            )}
+                        >
+                            <p className="font-medium text-slate-900 dark:text-white">
+                                {messageResult.shift_id
+                                    ? `Shift created for ${messageResult.parsed_payload.client}`
+                                    : `Parsed, but no client named "${messageResult.parsed_payload.client}" was found.`}
+                            </p>
+                            <p className="mt-1 text-slate-600 dark:text-slate-300">
+                                {messageResult.parsed_payload.date} · {messageResult.parsed_payload.start_time}–
+                                {messageResult.parsed_payload.end_time} · {messageResult.parsed_payload.pickup} →{' '}
+                                {messageResult.parsed_payload.destination}
+                            </p>
+                            {messageResult.shift_id && (
+                                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                    Selected below — ready to run allocation.
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-slate-900">
                 <div className="flex flex-wrap items-end gap-4">
