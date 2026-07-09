@@ -6,6 +6,7 @@ import {
     runAllocation,
     type AllocationHistoryParams,
 } from '../api/allocation';
+import { reportKeys } from './useReports';
 import { shiftKeys } from './useShifts';
 
 export const allocationKeys = {
@@ -20,9 +21,11 @@ export function useAllocationHistoryQuery(params: AllocationHistoryParams) {
     });
 }
 
-// Every mutation here also invalidates shifts: running allocation flips the
-// shift to "allocated", confirming flips it to "confirmed" — the shifts
-// list/status filter would otherwise show stale data.
+// Every mutation here also invalidates shifts (running flips a shift to
+// "allocated", confirming to "confirmed") and reports (RecalculateWorkerHours
+// runs server-side on confirm/cancel, changing what /reports/hours and
+// /reports/shifts return for the affected week) — otherwise those pages
+// silently keep serving a cached-but-now-wrong result within staleTime.
 export function useRunAllocationMutation() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -30,6 +33,7 @@ export function useRunAllocationMutation() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: allocationKeys.all });
             queryClient.invalidateQueries({ queryKey: shiftKeys.all });
+            queryClient.invalidateQueries({ queryKey: reportKeys.all });
         },
     });
 }
@@ -41,6 +45,7 @@ export function useConfirmAssignmentMutation() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: allocationKeys.all });
             queryClient.invalidateQueries({ queryKey: shiftKeys.all });
+            queryClient.invalidateQueries({ queryKey: reportKeys.all });
         },
     });
 }
@@ -52,6 +57,7 @@ export function useCancelAssignmentMutation() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: allocationKeys.all });
             queryClient.invalidateQueries({ queryKey: shiftKeys.all });
+            queryClient.invalidateQueries({ queryKey: reportKeys.all });
         },
     });
 }

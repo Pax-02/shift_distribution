@@ -7,6 +7,7 @@ import { ClientFormPage } from '../pages/clients/ClientFormPage';
 import { ClientsListPage } from '../pages/clients/ClientsListPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { LoginPage } from '../pages/LoginPage';
+import { ReportsPage } from '../pages/reports/ReportsPage';
 import { ShiftFormPage } from '../pages/shifts/ShiftFormPage';
 import { ShiftsListPage } from '../pages/shifts/ShiftsListPage';
 import { WorkerFormPage } from '../pages/workers/WorkerFormPage';
@@ -68,6 +69,11 @@ export const router = createBrowserRouter([
                         path: 'allocation',
                         element: <RequirePermission permission="allocation.run" />,
                         children: [{ index: true, element: <AllocationPage /> }],
+                    },
+                    {
+                        path: 'reports',
+                        element: <RequirePermission permission="reports.view" />,
+                        children: [{ index: true, element: <ReportsPage /> }],
                     },
                 ],
             },
